@@ -24,7 +24,7 @@ configurations {
 }
 
 dependencies {
-  lintChecks project(path: ':lint', configuration: 'lintChecks')
+//  lintChecks project(path: ':lint', configuration: 'lintChecks')
 }
 
 task copyLintJar(type: Copy) {
@@ -44,4 +44,4 @@ ext {
   PUBLISH_ARTIFACT_ID = 'folivora'
   PUBLISH_VERSION = verName
 }
-apply from: 'https://raw.githubusercontent.com/blundell/release-android-library/master/android-release-aar.gradle'
+//apply from: 'https://raw.githubusercontent.com/blundell/release-android-library/master/android-release-aar.gradle'
