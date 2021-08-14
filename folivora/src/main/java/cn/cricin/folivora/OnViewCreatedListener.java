@@ -14,20 +14,16 @@
  * limitations under the License.
  */
 
-package cn.cricin.folivora.view;
+package cn.cricin.folivora;
 
-import android.content.Context;
 import android.util.AttributeSet;
-
-import cn.cricin.folivora.Folivora;
+import android.view.View;
 
 /**
- * Stub GradView to support previewing, will be replaced by android.widget.GridView
- * at runtime
+ * A listener notified when a view is been created. you can
+ * do some customization on the view based on the attrs. eg,
+ * change text or typeface of TextView or change src of ImageView
  */
-public final class GridView extends android.widget.GridView {
-  public GridView(Context context, AttributeSet attrs) {
-    super(context, attrs);
-    Folivora.applyDrawableToView(this, attrs);
-  }
+public interface OnViewCreatedListener {
+  void onViewCreated(View view, AttributeSet attrs);
 }

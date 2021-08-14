@@ -17,7 +17,6 @@
 package cn.cricin.folivora;
 
 import android.content.Context;
-import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -44,7 +43,6 @@ final class FolivoraViewFactory implements LayoutInflater.Factory2 {
     Context.class, AttributeSet.class};
   private static Object[] sConstructorArgs = new Object[2];
   private static Map<String, Constructor<? extends View>> sConstructorMap = new HashMap<>();
-  private static Map<String, Class<?>> sLoadedClass = new HashMap<>();
 
   LayoutInflater.Factory2 mFactory2;
   LayoutInflater.Factory mFactory;
@@ -56,7 +54,25 @@ final class FolivoraViewFactory implements LayoutInflater.Factory2 {
 
   @Override
   public View onCreateView(View parent, String name, Context context, AttributeSet attrs) {
-    View view = onCreateView(parent, name, context, attrs, mFactory, mFactory2);
+    View view = null;
+    if (mFactory2 != null) {
+      view = mFactory2.onCreateView(parent, name, context, attrs);
+    }
+    if (view == null && mFactory != null) {
+      view = mFactory.onCreateView(name, context, attrs);
+    }
+    if (view == null && name.endsWith("ViewStub")) return null;//fix NPE when creating ViewStub
+
+    if (view == null && name.indexOf('.') != -1) {
+      view = createView(name, context, attrs);
+    }
+
+    if (view == null) {
+      for (String prefix : sClassPrefixList) {
+        view = createView(prefix + name, context, attrs);
+        if (view != null) break;
+      }
+    }
     if (view != null) {
       Folivora.applyDrawableToView(view, attrs);
       Folivora.dispatchViewCreated(view, attrs);
@@ -64,41 +80,8 @@ final class FolivoraViewFactory implements LayoutInflater.Factory2 {
     return view;
   }
 
-  private static View onCreateView(View parent, String name, Context context,
-                           AttributeSet attrs, LayoutInflater.Factory factory,
-                           LayoutInflater.Factory2 factory2) {
-    View result = null;
-    name = replaceViewNameIfNeeded(name, context, attrs);
-    if (factory2 != null) {
-      result = factory2.onCreateView(parent, name, context, attrs);
-    }
-    if (result == null && factory != null) {
-      result = factory.onCreateView(name, context, attrs);
-    }
-    if (result == null && name.endsWith("ViewStub")) return null;//fix NPE when creating ViewStub
-
-    if (result == null && name.indexOf('.') != -1) {
-      result = createCustomView(name, context, attrs);
-    }
-
-    if (result == null) {
-      LayoutInflater inflater = getLayoutInflater(context);
-      for (String prefix : sClassPrefixList) {
-        try {
-          result = inflater.createView(name, prefix, attrs);
-          if (result != null) break;
-        } catch (ClassNotFoundException e) {
-          // In this case we want to let the LayoutInflater self take a crack
-          // at it.
-        }
-      }
-    }
-    return result;
-  }
-
-  private static View createCustomView(String name, Context ctx, AttributeSet attrs) {
+  private static View createView(String name, Context ctx, AttributeSet attrs) {
     Constructor<? extends View> constructor = sConstructorMap.get(name);
-
     try {
       if (constructor == null) {
         // Class not found in the cache, see if it's real, and try to add it
@@ -121,49 +104,8 @@ final class FolivoraViewFactory implements LayoutInflater.Factory2 {
     }
   }
 
-  private static String replaceViewNameIfNeeded(String name, Context ctx, AttributeSet attrs) {
-    TypedArray a = ctx.obtainStyledAttributes(attrs, R.styleable.Folivora);
-    String viewName = a.getString(R.styleable.Folivora_replacedBy);
-    a.recycle();
-    if (viewName != null) {
-      name = viewName;
-    } else if (name.startsWith("cn.cricin.folivora.view")) {
-      name = name.substring(name.lastIndexOf('.') + 1);
-    } else if (name.lastIndexOf('.') != -1) {
-      Class<?> c = loadClass(name, ctx);
-      if (c != null && ReplacedBySuper.class.isAssignableFrom(c)) {
-        name = c.getSuperclass().getCanonicalName();
-      }
-    }
-    // if name is full qualified class name and it's provided by framework, we
-    // should using short name so that AppCompatViewInflater can create AppCompatViews
-    int index = name.lastIndexOf('.');
-    if (index != -1 && name.startsWith("android.") && !name.startsWith("android.support")) {
-      name = name.substring(index + 1);
-    }
-    return name;
-  }
-
-  private static Class<?> loadClass(String name, Context ctx) {
-    Class<?> c = sLoadedClass.get(name);
-    if(c == null){
-      try {
-        c = ctx.getClassLoader().loadClass(name);
-        if (c != null) {
-          sLoadedClass.put(name, c);
-        }
-      } catch (ClassNotFoundException ignore) {}
-    }
-    return c;
-  }
-
   private static LayoutInflater getLayoutInflater(Context context) {
-    LayoutInflater inflater = LayoutInflater.from(context);
-    if (inflater instanceof FolivoraInflater) {
-      return ((FolivoraInflater) inflater).getBaseInflater();
-    } else {
-      return inflater;
-    }
+    return LayoutInflater.from(context);
   }
 
   private static boolean sCheckedField;

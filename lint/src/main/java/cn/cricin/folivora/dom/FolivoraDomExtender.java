@@ -36,22 +36,23 @@ import javax.annotation.Nonnull;
 
 @SuppressWarnings("unchecked")
 public final class FolivoraDomExtender extends DomExtender<AndroidDomElement> {
-  private static Class sLegacyAttributeFormatClass;
-  private static HashMap<Object, Class> sValueClasses;
-  private static Class sAttributeFormatClass;
+  private static HashMap<Object, Class> sValueClasses = new HashMap<>();
 
   static {
     try {
-      sLegacyAttributeFormatClass = Class.forName("org.jetbrains.android.dom.attrs.AttributeFormat");
-      sValueClasses = new HashMap<>();
-      sValueClasses.put(Enum.valueOf(sLegacyAttributeFormatClass, "Boolean"), boolean.class);
-      sValueClasses.put(Enum.valueOf(sLegacyAttributeFormatClass, "Reference"), ResourceValue.class);
-      sValueClasses.put(Enum.valueOf(sLegacyAttributeFormatClass, "Dimension"), ResourceValue.class);
-      sValueClasses.put(Enum.valueOf(sLegacyAttributeFormatClass, "Color"), ResourceValue.class);
+      Class legacyAttributeFormatClass = Class.forName("org.jetbrains.android.dom.attrs.AttributeFormat");
+      sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Boolean"), boolean.class);
+      sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Reference"), ResourceValue.class);
+      sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Dimension"), ResourceValue.class);
+      sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Color"), ResourceValue.class);
     } catch (ClassNotFoundException ignore) {
     }
     try {
-      sAttributeFormatClass = Class.forName("com.android.ide.common.rendering.api.AttributeFormat");
+      Class.forName("com.android.ide.common.rendering.api.AttributeFormat");
+      sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.BOOLEAN, boolean.class);
+      sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.REFERENCE, ResourceValue.class);
+      sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.DIMENSION, ResourceValue.class);
+      sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.COLOR, ResourceValue.class);
     } catch (ClassNotFoundException ignore) {
     }
   }
@@ -62,25 +63,8 @@ public final class FolivoraDomExtender extends DomExtender<AndroidDomElement> {
   }
 
   private static Class getValueClass(Object format) {
-    if (format == null) return String.class;
-    if (sLegacyAttributeFormatClass != null && sLegacyAttributeFormatClass.isInstance(format)) {
-      Class cls = sValueClasses.get(format);
-      if (cls == null) {
-        cls = String.class;
-      }
-      return cls;
-    } else if (sAttributeFormatClass != null && sAttributeFormatClass.isInstance(format)) {
-      if (com.android.ide.common.rendering.api.AttributeFormat.BOOLEAN == format) {
-        return boolean.class;
-      } else if (com.android.ide.common.rendering.api.AttributeFormat.REFERENCE == format
-        || com.android.ide.common.rendering.api.AttributeFormat.DIMENSION == format
-        || com.android.ide.common.rendering.api.AttributeFormat.COLOR == format) {
-        return ResourceValue.class;
-      } else {
-        return String.class;
-      }
-    }
-    return String.class;
+    Class cls = sValueClasses.get(format);
+    return cls == null ? String.class : cls;
   }
 
   @Override
@@ -110,12 +94,15 @@ public final class FolivoraDomExtender extends DomExtender<AndroidDomElement> {
   public static void install() {
     ExtensionPoint<DomExtenderEP> point = Extensions.getRootArea().getExtensionPoint
       (DomExtenderEP.EP_NAME);
+    String clazzName = FolivoraDomExtender.class.getCanonicalName();
     DomExtenderEP androidDomExtenderEp = null;
     DomExtenderEP[] eps = point.getExtensions();
     for (DomExtenderEP ep : eps) {
+      if (clazzName.equals(ep.extenderClassName)) {
+        return;// already registered
+      }
       if (ep.extenderClassName.endsWith("AndroidDomExtender")) {
         androidDomExtenderEp = ep;
-        break;
       }
     }
     if (androidDomExtenderEp != null) {
