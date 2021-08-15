@@ -18,6 +18,7 @@ package cn.cricin.folivora.dom;
 
 import com.intellij.openapi.extensions.ExtensionPoint;
 import com.intellij.openapi.extensions.Extensions;
+import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.util.xml.GenericAttributeValue;
 import com.intellij.util.xml.reflect.DomExtender;
 import com.intellij.util.xml.reflect.DomExtenderEP;
@@ -36,86 +37,102 @@ import javax.annotation.Nonnull;
 
 @SuppressWarnings("unchecked")
 public final class FolivoraDomExtender extends DomExtender<AndroidDomElement> {
-  private static HashMap<Object, Class> sValueClasses = new HashMap<>();
+    private static HashMap<Object, Class> sValueClasses = new HashMap<>();
 
-  static {
-    try {
-      Class legacyAttributeFormatClass = Class.forName("org.jetbrains.android.dom.attrs.AttributeFormat");
-      sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Boolean"), boolean.class);
-      sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Reference"), ResourceValue.class);
-      sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Dimension"), ResourceValue.class);
-      sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Color"), ResourceValue.class);
-    } catch (ClassNotFoundException ignore) {
-    }
-    try {
-      Class.forName("com.android.ide.common.rendering.api.AttributeFormat");
-      sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.BOOLEAN, boolean.class);
-      sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.REFERENCE, ResourceValue.class);
-      sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.DIMENSION, ResourceValue.class);
-      sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.COLOR, ResourceValue.class);
-    } catch (ClassNotFoundException ignore) {
-    }
-  }
-
-  @Override
-  public boolean supportsStubs() {
-    return false;
-  }
-
-  private static Class getValueClass(Object format) {
-    Class cls = sValueClasses.get(format);
-    return cls == null ? String.class : cls;
-  }
-
-  @Override
-  public void registerExtensions(@Nonnull AndroidDomElement element,
-                                 @Nonnull final DomExtensionsRegistrar registrar) {
-    final AndroidFacet facet = AndroidFacet.getInstance(element);
-
-    if (facet == null) {
-      return;
+    static {
+        try {
+            Class legacyAttributeFormatClass = Class.forName("org.jetbrains.android.dom.attrs.AttributeFormat");
+            sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Boolean"), boolean.class);
+            sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Reference"), ResourceValue.class);
+            sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Dimension"), ResourceValue.class);
+            sValueClasses.put(Enum.valueOf(legacyAttributeFormatClass, "Color"), ResourceValue.class);
+        } catch (ClassNotFoundException ignore) {
+        }
+        try {
+            Class.forName("com.android.ide.common.rendering.api.AttributeFormat");
+            sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.BOOLEAN, boolean.class);
+            sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.REFERENCE, ResourceValue.class);
+            sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.DIMENSION, ResourceValue.class);
+            sValueClasses.put(com.android.ide.common.rendering.api.AttributeFormat.COLOR, ResourceValue.class);
+        } catch (ClassNotFoundException ignore) {
+        }
     }
 
-    AttributeProcessingUtil.AttributeProcessor callback = (xmlName, attrDef, parentStyleableName)
-      -> {
-      Set<?> formats = attrDef.getFormats();
-      Class valueClass = formats.size() == 1 ? getValueClass(formats.iterator().next()) : String
-        .class;
-      registrar.registerAttributeChildExtension(xmlName, GenericAttributeValue.class);
-      return registrar.registerGenericAttributeValueChildExtension(xmlName, valueClass);
-    };
-
-    try {
-      FolivoraAttrProcessing.registerFolivoraAttributes(facet, element, callback);
-    } catch (Exception ignore) {}
-  }
-
-
-  public static void install() {
-    ExtensionPoint<DomExtenderEP> point = Extensions.getRootArea().getExtensionPoint
-      (DomExtenderEP.EP_NAME);
-    String clazzName = FolivoraDomExtender.class.getCanonicalName();
-    DomExtenderEP androidDomExtenderEp = null;
-    DomExtenderEP[] eps = point.getExtensions();
-    for (DomExtenderEP ep : eps) {
-      if (clazzName.equals(ep.extenderClassName)) {
-        return;// already registered
-      }
-      if (ep.extenderClassName.endsWith("AndroidDomExtender")) {
-        androidDomExtenderEp = ep;
-      }
+    @Override
+    public boolean supportsStubs() {
+        return false;
     }
-    if (androidDomExtenderEp != null) {
-      DomExtenderEP ep = new DomExtenderEP();
-      ep.setPluginDescriptor(androidDomExtenderEp.getPluginDescriptor());
-      ep.domClassName = AndroidDomElement.class.getCanonicalName();
-      ep.extenderClassName = FolivoraDomExtender.class.getCanonicalName();
-      try {
-        Field field = ep.getClass().getDeclaredField("myExtender");
-        field.setAccessible(true);
-        field.set(ep, new FolivoraDomExtender());
-        point.registerExtension(ep);
-      } catch (Exception ignore) {}
+
+    private static Class getValueClass(Object format) {
+        Class cls = sValueClasses.get(format);
+        return cls == null ? String.class : cls;
     }
-  }
+
+    @Override
+    public void registerExtensions(@Nonnull AndroidDomElement element,
+                                   @Nonnull final DomExtensionsRegistrar registrar) {
+        final AndroidFacet facet = AndroidFacet.getInstance(element);
+
+        if (facet == null) {
+            return;
+        }
+
+        AttributeProcessingUtil.AttributeProcessor callback = (xmlName, attrDef, parentStyleableName)
+                -> {
+            Set<?> formats = attrDef.getFormats();
+            Class valueClass = formats.size() == 1 ? getValueClass(formats.iterator().next()) : String
+                    .class;
+            registrar.registerAttributeChildExtension(xmlName, GenericAttributeValue.class);
+            return registrar.registerGenericAttributeValueChildExtension(xmlName, valueClass);
+        };
+
+        try {
+            FolivoraAttrProcessing.registerFolivoraAttributes(facet, element, callback);
+        } catch (Exception ignore) {
+        }
+    }
+
+
+    public static void install() {
+        ExtensionPoint<DomExtenderEP> point = Extensions.getRootArea().getExtensionPoint
+                (DomExtenderEP.EP_NAME);
+        String clazzName = FolivoraDomExtender.class.getCanonicalName();
+        DomExtenderEP androidDomExtenderEp = null;
+        DomExtenderEP[] eps = point.getExtensions();
+        for (DomExtenderEP ep : eps) {
+            if (clazzName.equals(ep.extenderClassName)) {
+                return;// already registered
+            }
+            if (ep.extenderClassName.endsWith("AndroidDomExtender")) {
+                androidDomExtenderEp = ep;
+            }
+        }
+        if (androidDomExtenderEp != null) {
+            try {
+                Field fieldP = androidDomExtenderEp.getClass().getDeclaredField("pluginDescriptor");
+                fieldP.setAccessible(true);
+                PluginDescriptor pluginDescriptor = (PluginDescriptor) fieldP.get(androidDomExtenderEp);
+
+                DomExtenderEP ep = new DomExtenderEP(
+                        AndroidDomElement.class.getCanonicalName(),
+                        pluginDescriptor
+                );
+                //new DomExtenderEP();
+//                ep.setPluginDescriptor(androidDomExtenderEp.getPluginDescriptor());
+//                ep.domClassName = AndroidDomElement.class.getCanonicalName();
+                ep.extenderClassName = FolivoraDomExtender.class.getCanonicalName();
+                try {
+                    Field field = ep.getClass().getDeclaredField("myExtender");
+                    field.setAccessible(true);
+                    field.set(ep, new FolivoraDomExtender());
+                    point.registerExtension(ep);
+                } catch (Exception ignore) {
+                }
+
+            } catch (Exception ignore) {
+            }
+
+
+        }
+    }
 }

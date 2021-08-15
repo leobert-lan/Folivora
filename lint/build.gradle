@@ -1,68 +1,69 @@
 apply plugin: 'java'
 
-def ideInstallationDir = new File('d:/android/studio')
+def ideInstallationDir = new File("/Applications/Android Studio.app/Contents")
 def androidPluginLibPath = 'plugins/android/lib'
 def lintVersion = '26.2.0-alpha06'
 
 configurations.all {
-  transitive = false
+    transitive = false
 }
 
 dependencies {
-  compileOnly "com.android.tools.lint:lint-api:$lintVersion"
-  compileOnly "com.android.tools.lint:lint-checks:$lintVersion"
-  compileOnly "com.android.tools.lint:lint:$lintVersion"
-  compileOnly "com.android.tools.external.org-jetbrains:uast:$lintVersion"
-  compileOnly "com.android.tools.external.com-intellij:intellij-core:$lintVersion"
-  compileOnly 'com.android.tools:common:26.6.1'
-  compileOnly 'com.android.tools.layoutlib:layoutlib-api:26.6.1'
-  if (ideInstallationDir.exists() && ideInstallationDir.isDirectory()) {
-     ["${androidPluginLibPath}/android.jar",
-     'lib/openapi.jar',
-     'lib/platform-api.jar',
-     'lib/idea.jar'
-    ].each { lib ->
-       def file = new File(ideInstallationDir, lib)
-       if(!file.exists()) throw new Exception("file $file does not exist")
-      compileOnly files(file)
-    }
-    def legacyLayoutLib = new File("${androidPluginLibPath}/layoutlib.jar")
-    def layoutLib = new File(ideInstallationDir, "plugins/android-layoutlib/lib/layoutlib.jar")
-    if (legacyLayoutLib.exists()) {
-      compileOnly files(legacyLayoutLib)
-    } else if(layoutLib.exists()) {
-      compileOnly files(layoutLib)
+    compileOnly "com.android.tools.lint:lint-api:$lintVersion"
+    compileOnly "com.android.tools.lint:lint-checks:$lintVersion"
+    compileOnly "com.android.tools.lint:lint:$lintVersion"
+    compileOnly "com.android.tools.external.org-jetbrains:uast:$lintVersion"
+    compileOnly "com.android.tools.external.com-intellij:intellij-core:$lintVersion"
+    compileOnly 'com.android.tools:common:26.6.1'
+    compileOnly 'com.android.tools.layoutlib:layoutlib-api:26.6.1'
+    if (ideInstallationDir.exists() && ideInstallationDir.isDirectory()) {
+        ["${androidPluginLibPath}/android.jar",
+         "${androidPluginLibPath}/android-common.jar",
+         'lib/openapi.jar',
+         'lib/platform-api.jar',
+         'lib/idea.jar'
+        ].each { lib ->
+            def file = new File(ideInstallationDir, lib)
+            if (!file.exists()) throw new Exception("file $file does not exist")
+            compileOnly files(file)
+        }
+        def legacyLayoutLib = new File("${androidPluginLibPath}/layoutlib.jar")
+        def layoutLib = new File(ideInstallationDir, "plugins/android-layoutlib/lib/layoutlib.jar")
+        if (legacyLayoutLib.exists()) {
+            compileOnly files(legacyLayoutLib)
+        } else if (layoutLib.exists()) {
+            compileOnly files(layoutLib)
+        } else {
+            throw new Exception("layoutlib does not exist")
+        }
     } else {
-      throw new Exception("layoutlib does not exist")
+        throw new GradleException('Invalid ide installation dir')
     }
-  } else {
-    throw new GradleException('Invalid ide installation dir')
-  }
 }
 
 jar {
-  manifest {
-    attributes("Lint-Registry-v2": "cn.cricin.folivora.lint.FolivoraIssueRegistry")
-    attributes("Lint-Registry": "cn.cricin.folivora.lint.FolivoraIssueRegistry")
-  }
-  archiveName('folivora-lint.jar')
+    manifest {
+        attributes("Lint-Registry-v2": "cn.cricin.folivora.lint.FolivoraIssueRegistry")
+        attributes("Lint-Registry": "cn.cricin.folivora.lint.FolivoraIssueRegistry")
+    }
+    archiveName('folivora-lint.jar')
 }
 
 task installLint(type: Copy) {
-  setGroup('install')
-  def jarTask = tasks.findByName('jar')
-  dependsOn(jarTask)
-  from(jarTask.outputs.files)
-  into(new File(new File(System.getProperty("user.home")), '.android/lint/'))
+    setGroup('install')
+    def jarTask = tasks.findByName('jar')
+    dependsOn(jarTask)
+    from(jarTask.outputs.files)
+    into(new File(new File(System.getProperty("user.home")), '.android/lint/'))
 }
 
 task uninstallLint() {
-  setGroup('install')
-  doFirst {
-    File lintLibDir = new File(new File(System.getProperty("user.home")), '.android/lint')
-    def folivoraLintJar = new File(lintLibDir, 'folivora-lint.jar')
-    if (folivoraLintJar.exists()) {
-      folivoraLintJar.delete()
+    setGroup('install')
+    doFirst {
+        File lintLibDir = new File(new File(System.getProperty("user.home")), '.android/lint')
+        def folivoraLintJar = new File(lintLibDir, 'folivora-lint.jar')
+        if (folivoraLintJar.exists()) {
+            folivoraLintJar.delete()
+        }
     }
-  }
 }

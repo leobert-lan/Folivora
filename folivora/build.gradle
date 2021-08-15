@@ -17,8 +17,8 @@ android {
 }
 
 dependencies {
-//  lintChecks project(':lint')
-//  lintPublish project(':lint')
+  lintChecks project(':lint')
+  lintPublish project(':lint')
 }
 
 ext {
